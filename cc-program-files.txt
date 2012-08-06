@@ -1,0 +1,48 @@
+CC_Program would be extending gobject to use signals stuff and would also be a singleton
+so it could be grabbed from anywhere
+
+default signals would be
+
+startup
+shutdown
+
+show main
+hide main
+
+show window
+hide window
+add window
+remove window
+
+splash screen
+
+update check
+start update
+finish update
+
+load plugin
+run plugin
+unload plugin
+
+load settings
+save settings
+
+check requirements
+load theme
+
+handle error
+
+chain -
+startup
+check requirements
+error handling setup
+load settings
+load theme
+update check
+load plugin
+splash screen
+show main
+
+unload plugins - if needed
+save settings
+shutdown
