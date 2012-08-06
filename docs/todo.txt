@@ -1,0 +1,17 @@
+Callicore todo:
+
+1. Generic Help Window (a la mozembed/gtkhtml only with textbuffer - reads docbook? html?)
+2. Generic About (similiar to splash)
+3. Generic Treeview (with working dnd - write the overrides)
+4. Multitoolbar/toolbar detach support - hidden expose for images?
+5. Generic preferences window (I like firefoxes, although options for pane location will probably be needed)
+
+CC_Messages: add expander with treeview of trace information for errors
+
+Treeview improvements - 
+DND - easy implementing dnd even when sorted, including highlight drop location and creating row image and reordering
+Editing - easy edit in place
+columns - easy reordering and choose columns to view
+right click - with edit, delete options
+
+basic printing with lpr or just implement 2.10?

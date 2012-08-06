@@ -1,0 +1,924 @@
+<?php
+/**
+ * toolbar.class.php - extends the gtktoolbar class to add additional features
+ *
+ * adds show/hide signals that will link up to a "show toolbar" action, adds
+ * the ability to change icon size and style type, and adds a customize dialog
+ *
+ * This is released under the GPL, see docs/gpl.txt for details
+ *
+ * @author       Elizabeth Smith <emsmith@callicore.net>
+ * @copyright    Elizabeth Smith (c)2006
+ * @link         http://callicore.net/desktop
+ * @license      http://www.opensource.org/licenses/gpl-license.php GPL
+ * @version      $Id: toolbar.class.php 126 2007-01-24 21:20:49Z leonpegg $
+ * @since        Php 5.2.0
+ * @package      callicore
+ * @subpackage   desktop
+ * @category     lib
+ * @filesource
+ */
+
+/**
+ * CC_Toolbar - allows customizable, rememberable toolbars for a window
+ *
+ * manages showing, hiding and customizing a toolbar
+ */
+class CC_Toolbar extends GtkToolbar
+{
+	/**
+	 * array of all actions available to put on a toolbar
+	 * @var $options 
+	 */
+	protected $options = array();
+
+	/**
+	 * default items for toolbar
+	 * @var $default array
+	 */
+	protected $default = array();
+
+	/**
+	 * current toolbar items
+	 * @var $current array
+	 */
+	protected $current = array();
+
+	/**
+	 * popup context menu for the toolbar
+	 * @var $menu object instanceof GtkMenu
+	 */
+	protected $menu;
+
+	/**
+	 * entire liststore for customize
+	 * @var $model object instanceof GtkListstore
+	 */
+	protected $model;
+
+	/**
+	 * stores location of current
+	 * @var $iter object instanceof GtkTreeIter
+	 */
+	protected $iter;
+
+	/**
+	 * if something's on the toolbar hide it (store it here)
+	 * @var $toolitem object instanceof GtkToolItem
+	 */
+	protected $toolitem;
+
+	/**
+	 * public function __construct
+	 *
+	 * just sets a name for the toolbar, should be unique
+	 *
+	 * @param string $name name of specific toolbar
+	 * @return void
+	 */
+	public function __construct($name, array $default, array $options)
+	{
+		parent::__construct();
+
+		$this->set_name($name);
+		$this->default = $default;
+		$this->options = $options;
+
+		$this->register_actions();
+		$this->build_menu();
+		$this->build_toolbar();
+
+		$config = CC_Config::instance();
+		$actions = CC_Actions::instance();
+
+		$size = isset($config->{$name . '_toolbar_size'}) ? (string) $config->{$name . '_toolbar_size'} : 'small';
+		$style = isset($config->{$name . '_toolbar_style'}) ? (string) $config->{$name . '_toolbar_style'} : 'icon';
+		$active = isset($config->{$name . '_show_toolbar'}) ? (bool) $config->{$name . '_show_toolbar'} : true;
+
+		if ($style === 'icon')
+		{
+			$actions->get_action('toolbar', 'icon')->set_active(true);
+		}
+		elseif ($style === 'text')
+		{
+			$actions->get_action('toolbar', 'text')->set_active(true);
+		}
+		elseif ($style === 'both')
+		{
+			$actions->get_action('toolbar', 'both')->set_active(true);
+		}
+
+		if ($size === 'small')
+		{
+			$actions->get_action('toolbar', 'small')->set_active(true);
+		}
+		elseif ($size === 'medium')
+		{
+			$actions->get_action('toolbar', 'medium')->set_active(true);
+		}
+		elseif ($size === 'large')
+		{
+			$actions->get_action('toolbar', 'large')->set_active(true);
+		}
+
+		if ($active == false)
+		{
+			$this->set_no_show_all(true);
+			$this->set_visible(false);
+		}
+		else
+		{
+			$actions->get_action('toolbar', 'toggle')->set_active(true);
+		}
+
+		$this->connect('drag-motion', array($this, 'on_drag_motion'));
+		$this->connect('drag-drop', array($this, 'on_toolbar_drag_drop'));
+		$this->connect('drag-leave', array($this, 'on_drag_leave'));
+
+		return;
+	}
+
+	/**
+	 * protected function register_actions
+	 *
+	 * creates generic window actions
+	 *
+	 * @todo add additional generic actions
+	 * @return void
+	 */
+	protected function register_actions()
+	{
+		$actions = CC_Actions::instance();
+
+		$active = false;
+		
+		$actions->add_actions('toolbar', array(
+			array(
+				'type' => 'toggle',
+				'name' => 'toggle',
+				'label' => '_Show Toolbar',
+				'short-label' => '_Toolbar',
+				'tooltip' => 'Show and hide the toolbar',
+				'callback' => array($this, 'on_toggle_toolbar'),
+				'active' => $active,
+				),
+			array(
+				'type' => 'radio',
+				'name' => 'small',
+				'label' => '_Small Icons',
+				'short-label' => '_Small',
+				'tooltip' => 'Display small icons on the toolbar',
+				'callback' => array($this, 'on_size_toolbar'),
+				'value' => 1,
+				'radio' => 'small',
+				),
+			array(
+				'type' => 'radio',
+				'name' => 'medium',
+				'label' => '_Medium Icons',
+				'short-label' => '_Medium',
+				'tooltip' => 'Display medium icons on the toolbar',
+				'callback' => array($this, 'on_size_toolbar'),
+				'value' => 2,
+				'radio' => 'small',
+				),
+			array(
+				'type' => 'radio',
+				'name' => 'large',
+				'label' => '_Large Icons',
+				'short-label' => '_Large',
+				'tooltip' => 'Display large icons on the toolbar',
+				'callback' => array($this, 'on_size_toolbar'),
+				'value' => 3,
+				'radio' => 'small',
+				),
+			array(
+				'type' => 'radio',
+				'name' => 'icon',
+				'label' => '_Icons',
+				'short-label' => '_Icons',
+				'tooltip' => 'Display only icons on the toolbar',
+				'callback' => array($this, 'on_style_toolbar'),
+				'value' => 1,
+				'radio' => 'icon',
+				),
+			array(
+				'type' => 'radio',
+				'name' => 'text',
+				'label' => '_Text',
+				'short-label' => '_Text',
+				'tooltip' => 'Display only text on the toolbar',
+				'callback' => array($this, 'on_style_toolbar'),
+				'value' => 2,
+				'radio' => 'icon',
+				),
+			array(
+				'type' => 'radio',
+				'name' => 'both',
+				'label' => '_Both',
+				'short-label' => '_Both',
+				'tooltip' => 'Display icons and text on the toolbar',
+				'callback' => array($this, 'on_style_toolbar'),
+				'value' => 3,
+				'radio' => 'icon',
+				),
+			array(
+				'type' => 'action',
+				'name' => 'customize',
+				'label' => '_Customize...',
+				'short-label' => '_Customize',
+				'tooltip' => 'Customize toolbar',
+				'callback' => array($this, 'on_customize_toolbar'),
+				'image' => 'gtk-properties',
+				),
+		));
+
+		return;
+	}
+
+	//----------------------------------------------------------------
+	//             UI building
+	//----------------------------------------------------------------
+
+	/**
+	 * public function build_menu
+	 *
+	 * build context menu
+	 *
+	 * @return void
+	 */
+	protected function build_menu()
+	{
+		$menu = $this->menu = new GtkMenu();
+		$actions = CC_Actions::instance();
+
+		$menu->append($actions->create_menu_item('toolbar', 'toggle'));
+
+		$item = new GtkMenuItem(CC::i18n('Toolbar S_tyle'));
+		$menu->add($item);
+		$submenu = new GtkMenu();
+		$item->set_submenu($submenu);
+
+		$submenu->append($actions->create_menu_item('toolbar', 'icon'));
+		$submenu->append($actions->create_menu_item('toolbar', 'text'));
+		$submenu->append($actions->create_menu_item('toolbar', 'both'));
+
+		$item = new GtkMenuItem(CC::i18n('Toolbar Si_ze'));
+		$menu->add($item);
+		$submenu = new GtkMenu();
+		$item->set_submenu($submenu);
+
+		$submenu->append($actions->create_menu_item('toolbar', 'small'));
+		$submenu->append($actions->create_menu_item('toolbar', 'medium'));
+		$submenu->append($actions->create_menu_item('toolbar', 'large'));
+
+		$menu->append(new GtkSeparatorMenuItem());
+
+		$menu->append($actions->create_menu_item('toolbar', 'customize'));
+
+		$menu->show_all();
+
+		$this->connect_simple('popup-context-menu', array($this, 'popup'));
+		return;
+	}
+
+	/**
+	 * public function build_toolbar
+	 *
+	 * actually builds the toolbar
+	 *
+	 * @return void
+	 */
+	protected function build_toolbar($default = false)
+	{
+		$config = CC_Config::instance();
+		$actions = CC_Actions::instance();
+
+		if ($default)
+		{
+			$this->current = $toolitems = $this->default;
+			foreach($this->get_children() as $button)
+			{
+				$this->remove($button);
+			}
+		}
+		else
+		{
+			$this->current = $toolitems = isset($config->{$this->name . '_toolbar_items'}) ? $config->{$this->name . '_toolbar_items'} : $this->default;
+		}
+
+		if(empty($toolitems))
+		{
+			$this->current = $toolitems = $this->default;
+		}
+
+		// populate toolbar
+		foreach ($toolitems as $item)
+		{
+			if (empty($item))
+			{
+				break;
+			}
+			elseif ($item === 'separator')
+			{
+				$item = new GtkSeparatorToolItem();
+			}
+			elseif ($item === 'space')
+			{
+				$item = new GtkSeparatorToolItem();
+				$item->set_draw(false);
+			}
+			elseif ($item === 'expander')
+			{
+				$item = new GtkSeparatorToolItem();
+				$item->set_expand(true);
+				$item->set_draw(false);
+			}
+			else
+			{
+				list($group, $name) = explode(':', $item);
+				$item = $actions->create_tool_item($group, $name);
+				$item->child->set_events($item->get_events() | Gdk::BUTTON_PRESS_MASK);
+				$item->child->connect('button-press-event', array($this, 'on_button_press_event'));
+				$item->child->connect_simple('popup-menu', array($this, 'popup'));
+			}
+			$item->connect('drag-begin', array($this, 'on_drag_begin'));
+			$this->insert($item, -1);
+		}
+		return;
+	}
+
+	/**
+	 * public function build_dialog
+	 *
+	 * builds a dialog for customizing toolbar
+	 *
+	 * @return void
+	 */
+	protected function build_dialog()
+	{
+		$window = new GtkDialog(CC::i18n('%s :: %s', CC::$program, 'Customize'),
+			$this->parent->parent, Gtk::DIALOG_DESTROY_WITH_PARENT | Gtk::DIALOG_NO_SEPARATOR);
+		$window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
+		$window->set_default_size('300', '400');
+		$window->set_border_width(10);
+
+		$actions = CC_Actions::instance();
+		$label = new GtkLabel();
+		$label->set_markup(CC::i18n('<b><big>%s</big></b>',
+			'Add items by dragging them from this window onto the toolbar.' . "\n"
+			. 'Remove items by dragging them from the toolbar into this window.' . "\n"
+			. 'Reorder toolbar items by dragging them to their new position.'));
+		$window->vbox->pack_start($label, FALSE, FALSE);
+		$window->action_area->add($button = new GtkButton(CC::i18n('_Reset to Default')));
+		$button->connect_simple('clicked', array($this, 'on_reset_toolbar'));
+		$button = $window->add_button(Gtk::STOCK_CLOSE, Gtk::RESPONSE_CLOSE);
+		$button->connect_simple('clicked', array($window, 'destroy'));
+
+		// create iconview to hold all possible items
+		$this->view = $view = new GtkIconView();
+
+		if(empty($this->model))
+		{
+			$this->create_liststore();
+		}
+		$filter = new GtkTreeModelFilter($this->model); 
+		$filter->set_visible_column(4);
+		$view->set_model($filter);
+		$list = array_diff($this->options,(array) $this->current);
+
+		$view->set_pixbuf_column(2);
+		$view->set_text_column(3);
+		$view->set_columns(0);
+		$view->set_selection_mode(Gtk::SELECTION_BROWSE);
+		$view->drag_source_set(Gdk::BUTTON1_MASK,
+				array(array('application/x-toolbar-item', 0, 0)), Gdk::ACTION_COPY|Gdk::ACTION_MOVE);
+		$view->connect('drag-begin', array($this, 'on_drag_begin'));
+		$view->drag_dest_set(Gtk::DEST_DEFAULT_ALL,
+			array( array('application/x-toolbar-item', 0, 0)), Gdk::ACTION_COPY|Gdk::ACTION_MOVE);
+		$view->connect('drag-drop', array($this, 'on_treeview_drag_drop'));
+		$view->select_path(0);
+
+		// scrolling window
+		$scroll = new GtkScrolledWindow();
+		$scroll->set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
+		$scroll->add($view);
+		$window->vbox->add($scroll);
+
+		// getting this positioned is not fun
+		list($x, $y) = $this->get_parent_window()->get_origin();
+		$position = $this->get_allocation();
+		// y is y position toolbar height allocation + toolbar y position
+		$y += $position->height + $position->y;
+		$window->move($x, $y);
+		return $window;
+	}
+
+	//----------------------------------------------------------------
+	//             Popup Handling
+	//----------------------------------------------------------------
+
+	/**
+	 * public function popup
+	 *
+	 * pops up a context menu on right click
+	 *
+	 * @return void
+	 */
+	public function popup()
+	{
+		$this->menu->popup();
+		return TRUE;
+	}
+
+	/**
+	 * public function on_button_press_event
+	 *
+	 * pops up a popup menu on right click
+	 *
+	 * @param object $window GtkWindow
+	 * @param object $event GdkEvent
+	 * @return void
+	 */
+	public function on_button_press_event($window, $event)
+	{
+		if ($event->button == 3)
+		{
+			$this->popup();
+		}
+		return;
+	}
+
+	//----------------------------------------------------------------
+	//             Toolbar Style Callbacks
+	//----------------------------------------------------------------
+
+	/**
+	 * public function on_style_toolbar
+	 *
+	 * change toolbar display type
+	 *
+	 * @return void
+	 */
+	public function on_style_toolbar($action)
+	{
+		$config = CC_Config::instance();
+		switch ($action->get_current_value())
+		{
+			case 3:
+			{
+				$config->{$this->name . '_toolbar_style'} = 'both';
+				$this->set_toolbar_style(Gtk::TOOLBAR_BOTH);
+				break;
+			}
+			case 2:
+			{
+				$config->{$this->name . '_toolbar_style'} = 'text';
+				$this->set_toolbar_style(Gtk::TOOLBAR_TEXT);
+				break;
+			}
+			default:
+			{
+				$config->{$this->name . '_toolbar_style'} = 'icon';
+				$this->set_toolbar_style(Gtk::TOOLBAR_ICONS);
+			}
+		}
+		$this->change_statusbar('Toolbar style changed');
+		return;
+	}
+
+	/**
+	 * public function on_size_toolbar
+	 *
+	 * change toolbar icon display size
+	 *
+	 * @return void
+	 */
+	public function on_size_toolbar($action)
+	{
+		$config = CC_Config::instance();
+		switch ($action->get_current_value())
+		{
+			case 3:
+			{
+				$config->{$this->name . '_toolbar_size'} = 'large';
+				$this->set_icon_size(CC::$DND);
+				break;
+			}
+			case 2:
+			{
+				$config->{$this->name . '_toolbar_size'} = 'medium';
+				$this->set_icon_size(CC::$LARGE_TOOLBAR);
+				break;
+			}
+			default:
+			{
+				$config->{$this->name . '_toolbar_size'} = 'small';
+				$this->set_icon_size(CC::$BUTTON);
+			}
+		}
+		$this->change_statusbar('Toolbar icon size changed');
+		return;
+	}
+
+	/**
+	 * public function on_toggle_toolbar
+	 *
+	 * show-hide toolbar callback
+	 *
+	 * @return void
+	 */
+	public function on_toggle_toolbar($action)
+	{
+		$this->set_no_show_all(FALSE);
+		$state = $action->get_active();
+		$this->set_visible($state);
+		CC_Config::instance()->{$this->name . '_show_toolbar'} = (bool) $state;
+		$this->change_statusbar('Toolbar visibility changed');
+		return;
+	}
+
+	/**
+	 * public function on_customize_toolbar
+	 *
+	 * creates and runs a dialog to customize the toolbar
+	 *
+	 * @return void
+	 */
+	public function on_customize_toolbar()
+	{
+		// make all buttons non-clickable and reorderable on the toolbar
+		$buttons = $this->get_children();
+		foreach ($buttons as $button)
+		{
+			$button->set_use_drag_window(TRUE);
+			$button->drag_source_set(Gdk::BUTTON1_MASK,
+				array(array('application/x-toolbar-item', 0, 0)), Gdk::ACTION_COPY|Gdk::ACTION_MOVE);
+		}
+		$this->drag_dest_set(Gtk::DEST_DEFAULT_ALL,
+			array( array('application/x-toolbar-item', 0, 0)), Gdk::ACTION_COPY|Gdk::ACTION_MOVE);
+		$window = $this->build_dialog();
+		$window->show_all();
+		$window->connect('destroy', array($this, 'on_customize_end'));
+		return;
+	}
+
+	/**
+	 * public function on_reset_toolbar
+	 *
+	 * creates and runs a dialog to customize the toolbar
+	 *
+	 * @return void
+	 */
+	public function on_reset_toolbar()
+	{
+		$this->build_toolbar(true);
+		return;
+	}
+
+	//----------------------------------------------------------------
+	//             Drag Callbacks
+	//----------------------------------------------------------------
+
+	/**
+	 * public function on_drag_begin
+	 *
+	 * sets proper highlight pixmap
+	 *
+	 * @return void
+	 */
+	public function on_drag_begin($widget, $context)
+	{
+		if($widget instanceof GtkIconView)
+		{
+			$selected = $widget->get_selected_items();
+			$model = $widget->get_model();
+			$iter = $model->convert_iter_to_child_iter($model->get_iter($selected[0]));
+			$this->toolitem = null;
+		}
+		else
+		{
+			// right group and action
+			if($widget instanceof GtkSeparatorToolItem)
+			{
+				$group = '';
+				$action = 'separator';
+				if($widget->get_draw() == false)
+				{
+					$action = 'space';
+				}
+				if($widget->get_expand() == true)
+				{
+					$action = 'expander';
+				}
+			}
+			else
+			{
+				$group = $widget->get_data('group');
+				$action = $widget->get_data('action');
+			}
+			$iter = null;
+			foreach($this->model as $row)
+			{
+				if($row[0] == $group && $row[1] == $action)
+				{
+					$iter = $row->iter;
+					break;
+				}
+			}
+			$this->toolitem = $widget;
+		}
+		$this->iter = $iter;
+		// grab proper pixbuf and show it
+		$widget->drag_source_set_icon_pixbuf($this->model->get_value($iter, 2));
+		return;
+	}
+
+	/**
+	 * public function on_drag_motion
+	 *
+	 * sets the highlight button, and if needed removes the button we're moving
+	 *
+	 * @return void
+	 */
+	public function on_drag_motion($toolbar, $context, $x, $y, $time)
+	{
+		$index = $toolbar->get_drop_index($x, $y);
+		if($this->toolitem)
+		{
+			$this->toolitem->hide();
+		}
+		$toolbar->set_drop_highlight_item($this->model->get_value($this->iter, 5), $index);
+		return;
+	}
+
+	/**
+	 * public function on_drag_leave
+	 *
+	 * turns off highlighting and replace removed item in old location
+	 *
+	 * @return void
+	 */
+	public function on_drag_leave($toolbar, $context, $time)
+	{
+		$toolbar->set_drop_highlight_item(NULL, 0);
+		if($this->toolitem)
+		{
+			$this->toolitem->show();
+		}
+		return;
+	}
+
+	/**
+	 * public function on_toolbar_drag_drop
+	 *
+	 * handles items dragged and dropped onto the toolbar
+	 *
+	 * @return void
+	 */
+	public function on_toolbar_drag_drop($toolbar, $context, $x, $y, $time)
+	{
+		$index = $toolbar->get_drop_index($x, $y);
+		if ($this->toolitem)
+		{
+			$current = $toolbar->get_item_index($this->toolitem);
+			$toolbar->remove($this->toolitem);
+			if($current < $index)
+			{
+				$index--;
+			}
+			$toolbar->insert($this->toolitem, $index);
+		}
+		else
+		{
+			$group = $this->model->get_value($this->iter, 0);
+			$action = $this->model->get_value($this->iter, 1);
+			if ($action === 'separator')
+			{
+				$widget = new GtkSeparatorToolItem();
+			}
+			elseif ($action === 'space')
+			{
+				$widget = new GtkSeparatorToolItem();
+				$widget->set_draw(false);
+			}
+			elseif ($action === 'expander')
+			{
+				$widget = new GtkSeparatorToolItem();
+				$widget->set_expand(true);
+				$widget->set_draw(false);
+			}
+			else
+			{
+				$widget = CC_Actions::instance()->create_tool_item($group, $action);
+				$widget->child->set_events($widget->get_events() | Gdk::BUTTON_PRESS_MASK);
+				$widget->child->connect('button-press-event', array($this, 'on_button_press_event'));
+				$widget->child->connect_simple('popup-menu', array($this, 'popup'));
+				$this->model->set($this->iter, 4, false);
+			}
+			$widget->show();
+			$widget->set_use_drag_window(TRUE);
+			$widget->drag_source_set(Gdk::BUTTON1_MASK,
+				array(array('application/x-toolbar-item', 0, 0)), Gdk::ACTION_COPY|Gdk::ACTION_MOVE);
+			$widget->connect('drag-begin', array($this, 'on_drag_begin'));
+			$toolbar->insert($widget, $index);
+			$this->view->select_path(0);
+		}
+		return;
+	}
+
+	/**
+	 * public function on_treeview_drag_drop
+	 *
+	 * strip a button out of the toolbar and put it in the iconview
+	 *
+	 * @return void
+	 */
+	public function on_treeview_drag_drop($view, $context, $x, $y, $time)
+	{
+		if($this->toolitem)
+		{
+			$this->remove($this->toolitem);
+			$this->model->set($this->iter, 4, true);
+			return;
+		}
+		$this->model->set($this->iter, 4, false);
+		return;
+	}
+
+	/**
+	 * public function on_customize_end
+	 *
+	 * turns draggable buttons back to normal and saves toolbar
+	 *
+	 * @return void
+	 */
+	public function on_customize_end()
+	{
+		// make all buttons non-clickable and reorderable on the toolbar
+		$buttons = $this->get_children();
+		$this->current = array();
+		foreach ($buttons as $button)
+		{
+			$button->set_use_drag_window(FALSE);
+			$button->drag_source_unset();
+			if($button instanceof GtkSeparatorToolItem)
+			{
+				$action = 'separator';
+				if($button->get_draw() == false)
+				{
+					$action = 'space';
+				}
+				if($button->get_expand() == true)
+				{
+					$action = 'expander';
+				}
+				$current[] = $action;
+			}
+			else
+			{
+				$current[] = $button->get_data('group') . ':' . $button->get_data('action');
+			}
+		}
+		$this->current = $current;
+		CC_Config::instance()->{$this->name . '_toolbar_items'} = $this->current;
+		$this->drag_dest_unset();
+		return;
+	}
+
+	//----------------------------------------------------------------
+	//             Internal Methods
+	//----------------------------------------------------------------
+
+	/**
+	 * protected function change_statusbar
+	 *
+	 * attempts to retrieve a window with the same name as the toolbar from
+	 * CC_Wm and set the status label
+	 *
+	 * @return void
+	 */
+	protected function change_statusbar($message)
+	{
+		$window = CC_Wm::get_window($this->name);
+		if ($window instanceof CC_Main && $window->statusbar instanceof GtkStatusbar)
+		{
+			$window->statusbar->label->set_label(CC::i18n($message));
+		}
+		return;
+	}
+
+	/**
+	 * protected function create_liststore
+	 *
+	 * builds the internal liststore that holds all available items
+	 * group, action, pixmap, name, button widget (or null), and boolean show item
+	 * this has to be called when icons are resized (yuck) or when toolbar style
+	 * is changed (double yuck)
+	 *
+	 * @return void
+	 */
+	protected function create_liststore()
+	{
+		if($this->model)
+		{
+			$this->model->clear();
+		}
+		else
+		{
+			$model = $this->model = new GtkListStore(Gtk::TYPE_STRING, Gtk::TYPE_STRING,
+				GdkPixbuf::gtype, Gtk::TYPE_STRING, Gtk::TYPE_BOOLEAN, Gtk::TYPE_PHP_VALUE);
+		}
+		//print_r((array) $this->current);
+		//print_r($this->options);
+		$list = array_diff((array) $this->options,(array) $this->current);
+		// add separator
+		$model->append(array('', 'separator', $this->create_pixbuf('', 'separator'),
+			CC::i18n('Separator'), 1, new GtkSeparatorToolItem()));
+		// add space
+		$item = new GtkSeparatorToolItem();
+		$item->set_draw(false);
+		$model->append(array('', 'space', $this->create_pixbuf('', 'space'),
+			CC::i18n('Space'), 1, $item));
+		// expanding space
+		$item = new GtkSeparatorToolItem();
+		$item->set_draw(false);
+		$item->set_expand(true);
+		$model->append(array('', 'expander', $this->create_pixbuf('', 'expander'),
+			CC::i18n('Expanding Space'), 1, $item));
+
+		$actions = CC_Actions::instance();
+		// fill the model with available buttons
+		foreach ($this->options as $item)
+		{
+			list($group, $action) = explode(':', $item);
+			$pixbuf = $this->create_pixbuf($group, $action);
+			$label = preg_replace('/(?<!_)_|\.\.\./', '',
+				CC::i18n($actions->get_action($group, $action)->get_property('label')));
+			$show = in_array($item,(array) $this->current) ? false : true;
+			$model->append(array($group, $action, $pixbuf, $label, $show, $actions->create_tool_item($group, $action)));
+		}
+		return;
+	}
+
+	/**
+	 * protected function create_pixbuf
+	 *
+	 * create a new window, add a single toolbar with the current settings,
+	 * add the requested widget, take a snapshot, kill the window, return the
+	 * pixbuf - the results will be CACHED
+	 *
+	 * @return void
+	 */
+	function create_pixbuf($group, $action)
+	{
+		// create temporary window
+		$temp = new GtkWindow();
+		// attempt to force window size
+		list($width, $height) = Gtk::icon_size_lookup($this->get_icon_size());
+		$temp->set_default_size($width, $height);
+		// add appropriate toolbar
+		$temp->add($tool = new GtkToolbar());
+		$tool->set_toolbar_style($this->get_toolbar_style());
+		$tool->set_icon_size($this->get_icon_size());
+		// create widget
+		if ($action === 'separator')
+		{
+			$widget = new GtkSeparatorToolItem();
+		}
+		elseif ($action === 'space')
+		{
+			$widget = new GtkSeparatorToolItem();
+			$widget->set_draw(false);
+		}
+		elseif ($action === 'expander')
+		{
+			$widget = new GtkSeparatorToolItem();
+			$widget->set_expand(true);
+			$widget->set_draw(false);
+		}
+		else
+		{
+			$widget = CC_Actions::instance()->create_tool_item($group, $action);
+		}
+		// add widget to toolbar
+		$tool->insert($widget, -1);
+		// show all and force draw
+		$temp->show_all();
+		while (Gtk::events_pending())
+		{
+			Gtk::main_iteration();
+		}
+		// get current window size
+		$width = $widget->allocation->width;
+		$height = ($height > $widget->allocation->height) ? $height : $widget->allocation->height;
+		// take snapshot
+		$pixbuf = new GdkPixbuf(Gdk::COLORSPACE_RGB, TRUE, 8, $width, $height);
+		$pixbuf->get_from_drawable ($widget->window, $widget->window->get_colormap(),
+			0, 0, 0, 0, $width, $height);
+		$temp->destroy();
+		return $pixbuf;
+	}
+	
+}
+?>
