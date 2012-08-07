@@ -4,8 +4,8 @@
  *
  * This is released under the MIT, see license.txt for details
  *
- * @author       Elizabeth Smith <auroraeosrose@php.net>
- * @copyright    Elizabeth Smith (c)2009
+ * @author       Elizabeth M Smith <auroraeosrose@php.net>
+ * @copyright    Elizabeth M Smith (c)2009
  * @link         http://callicore.net
  * @license      http://www.opensource.org/licenses/mit-license.php MIT
  * @version      $Id: Lib.php 24 2009-04-27 02:04:10Z auroraeosrose $

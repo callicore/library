@@ -6,8 +6,8 @@
  *
  * This is released under the GPL, see docs/gpl.txt for details
  *
- * @author       Elizabeth Smith <emsmith@callicore.net>
- * @copyright    Elizabeth Smith (c)2006
+ * @author       Elizabeth M Smith <emsmith@callicore.net>
+ * @copyright    Elizabeth M Smith (c)2006
  * @link         http://callicore.net/desktop
  * @license      http://www.opensource.org/licenses/gpl-license.php GPL
  * @version      $Id: splash.class.php 120 2007-01-12 13:12:00Z emsmith $

@@ -1,10 +1,3 @@
-CC_Program would be extending gobject to use signals stuff and would also be a singleton
-so it could be grabbed from anywhere
-
-default signals would be
-
-startup
-shutdown
 
 show main
 hide main
@@ -16,33 +9,20 @@ remove window
 
 splash screen
 
-update check
-start update
-finish update
+Callicore todo:
 
-load plugin
-run plugin
-unload plugin
+1. Generic Help Window (a la mozembed/gtkhtml only with textbuffer - reads docbook? html?)
+2. Generic About (similiar to splash)
+3. Generic Treeview (with working dnd - write the overrides)
+4. Multitoolbar/toolbar detach support - hidden expose for images?
+5. Generic preferences window (I like firefoxes, although options for pane location will probably be needed)
 
-load settings
-save settings
+CC_Messages: add expander with treeview of trace information for errors
 
-check requirements
-load theme
+Treeview improvements - 
+DND - easy implementing dnd even when sorted, including highlight drop location and creating row image and reordering
+Editing - easy edit in place
+columns - easy reordering and choose columns to view
+right click - with edit, delete options
 
-handle error
-
-chain -
-startup
-check requirements
-error handling setup
-load settings
-load theme
-update check
-load plugin
-splash screen
-show main
-
-unload plugins - if needed
-save settings
-shutdown
+basic printing with lpr or just implement 2.10?

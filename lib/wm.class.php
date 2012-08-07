@@ -7,7 +7,7 @@
  * This is released under the GPL, see docs/gpl.txt for details
  *
  * @author       Leon Pegg <leon.pegg@gmail.com>
- * @author       Elizabeth Smith <emsmith@callicore.net>
+ * @author       Elizabeth M Smith <emsmith@callicore.net>
  * @copyright    Leon Pegg (c)2006
  * @link         http://callicore.net/desktop
  * @license      http://www.opensource.org/licenses/gpl-license.php GPL

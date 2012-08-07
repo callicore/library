@@ -4,14 +4,13 @@
  *
  * This is released under the MIT, see license.txt for details
  *
- * @author       Elizabeth Smith <auroraeosrose@php.net>
- * @copyright    Elizabeth Smith (c)2009
+ * @author       Elizabeth M Smith <auroraeosrose@gmail.com>
+ * @copyright    Elizabeth M Smith (c) 2009-2012
  * @link         http://callicore.net
  * @license      http://www.opensource.org/licenses/mit-license.php MIT
- * @version      $Id: Config.php 25 2009-04-30 23:58:52Z auroraeosrose $
- * @since        Php 5.3.0
+ * @since        Php 5.4.0 GTK 2.24.0
  * @package      callicore
- * @subpackage   lib
+ * @subpackage   library
  * @filesource
  */
 
@@ -36,6 +35,13 @@ class Config extends ArrayObject {
     protected $filename;
 
     /**
+     * application name
+     *
+     * @var string
+     */
+    protected $appname;
+
+    /**
      * Loads in an ini file as arrayobject data
      *
      * @return void
@@ -47,6 +53,7 @@ class Config extends ArrayObject {
         }
 
         $this->filename = $appdata_path . $app_name . '.ini';
+        $this->appname = $app_name;
 
         if (file_exists($this->filename)) {
             $config = parse_ini_file($this->filename, true);
@@ -64,9 +71,8 @@ class Config extends ArrayObject {
      * @return void
      */
     public function __destruct() {
-        $app = Application::getInstance();
 
-        $string = ';Preferences and Configuration for Callicore ' . $app->name
+        $string = ';Preferences and Configuration for Callicore ' . $this->appname
             . PHP_EOL . '; Saved ' . date('Y-m-d H:i:s') . PHP_EOL . PHP_EOL;
         // undo the program/widget nesting
         $array = $this->getArrayCopy();

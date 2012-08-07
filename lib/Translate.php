@@ -4,14 +4,13 @@
  *
  * This is released under the MIT, see license.txt for details
  *
- * @author       Elizabeth Smith <auroraeosrose@php.net>
- * @copyright    Elizabeth Smith (c)2009
+ * @author       Elizabeth M Smith <auroraeosrose@gmail.com>
+ * @copyright    Elizabeth M Smith (c) 2009-2012
  * @link         http://callicore.net
  * @license      http://www.opensource.org/licenses/mit-license.php MIT
- * @version      $Id: Translate.php 16 2009-04-25 21:17:29Z auroraeosrose $
- * @since        Php 5.3.0
+ * @since        Php 5.4.0 GTK 2.24.0
  * @package      callicore
- * @subpackage   lib
+ * @subpackage   library
  * @filesource
  */
 
@@ -19,6 +18,7 @@
  * Namespace for all the baseline library functionality
  */
 namespace Callicore\Lib;
+use Callicore\Lib\Application;
 
 /**
  * The Translate class wraps some of the gettext and iconv functionality
@@ -30,26 +30,33 @@ class Translate {
      * current charset for program
      * @var string
      */
-    private $charset;
+    protected $charset;
 
     /**
      * current locale for program
      * @var string
      */
-    private $locale;
+    protected $locale;
 
     /**
      * current gettext domain, typically the name of the application running
      * @var string
      */
-    private $domain;
+    protected $domain;
 
     /**
      * location of locale files
      * this is protected so an extending class can override it
      * @var string
      */
-    private $locale_dir;
+    protected $locale_dir;
+
+    /**
+     * Configuration storage object - readonly
+     *
+     * @var object instanceof \Callicore\Lib\Config
+     */
+    protected $config;
 
     /**
      * Sets up the program so it's ready to run
@@ -57,7 +64,7 @@ class Translate {
      * @param string $program name of the program
      * @return void
      */
-    public function __construct() {
+    public function __construct(Application $app) {
         // get defaults
         $this->charset = ini_get('php-gtk.codepage');
         $this->locale = setlocale(LC_ALL, null); // gets current setting
@@ -65,7 +72,7 @@ class Translate {
         $this->locale_dir = null;
 
         // override from configure
-        $config = Application::getInstance()->config;
+        $this->config = $config = $app->config;
         if (isset($config['locale']) && $config['locale'] !== $this->locale) {
             $this->locale = $config['locale'];
         }
@@ -116,15 +123,14 @@ class Translate {
      * @param string $locale new locale to set
      * @return boolean
      */
-    public function setLocale($locale) {
+    public function set_locale($locale) {
         $locale = setlocale(LC_ALL, $locale);
         // the locale change was unsuccessful
         if ($locale === false) {
             return false;
         }
         $this->locale = $locale;
-        $app = Application::getInstance();
-        $app->config->locale = $this->locale;
+        $this->config->locale = $this->locale;
         return true;
     }
 
@@ -134,11 +140,10 @@ class Translate {
      * @param string $locale_dir new location for locale files
      * @return boolean
      */
-    public function setLocaleDir($locale_dir) {
+    public function set_locale_dir($locale_dir) {
         $this->locale_dir = $locale_dir;
         bindtextdomain($this->domain, $this->locale_dir);
-        $app = Application::getInstance();
-        $app->config->locale_dir = $this->locale_dir;
+        $this->config->locale_dir = $this->locale_dir;
         return true;
     }
 
@@ -149,12 +154,11 @@ class Translate {
      * @param string $charset new charset to set
      * @return boolean
      */
-    public function setCharset($charset) {
+    public function set_charset($charset) {
         $this->charset = $charset;
         ini_set('php-gtk.codepage', $this->charset);
         bind_textdomain_codeset($this->domain, $this->charset);
-        $app = Application::getInstance();
-        $app->config->charset = $this->charset;
+        $this->config->charset = $this->charset;
         return true;
     }
 
@@ -164,11 +168,10 @@ class Translate {
      * @param string $domain new domain for lookups
      * @return boolean
      */
-    public function setDomain($domain) {
+    public function set_domain($domain) {
         $this->domain = $domain;
         textdomain($this->domain);
-        $app = Application::getInstance();
-        $app->config->domain = $this->domain;
+        $this->config->domain = $this->domain;
         return true;
     }
 

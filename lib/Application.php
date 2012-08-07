@@ -4,14 +4,13 @@
  *
  * This is released under the MIT, see license.txt for details
  *
- * @author       Elizabeth Smith <auroraeosrose@php.net>
- * @copyright    Elizabeth Smith (c)2009
+ * @author       Elizabeth M Smith <auroraeosrose@gmail.com>
+ * @copyright    Elizabeth M Smith (c) 2009-2012
  * @link         http://callicore.net
  * @license      http://www.opensource.org/licenses/mit-license.php MIT
- * @version      $Id: Application.php 23 2009-04-26 02:24:03Z auroraeosrose $
- * @since        Php 5.3.0
+ * @since        Php 5.4.0 GTK 2.24.0
  * @package      callicore
- * @subpackage   lib
+ * @subpackage   library
  * @filesource
  */
 
@@ -25,13 +24,20 @@ use \Gtk; // gtk main and gtk main_quit usage
 /**
  * Application - central processing for running the system
  *
- * Handles startup(__construct), shutdown(__destruct), initialization, uninitialization,
- * config loading, config saving, plugin loading and unloading
- * actual running of the application
- *
- * TODO: plugin and autoupdate management
+ * Handles startup(__construct), shutdown(__destruct), setup (check for requirements)
+ * initialization (main window, splash), uninitialization, updating (update check)
+ * config loading, config saving,
+ * plugin loading, plugin unloading
+ * run, quit, and error
  */
 abstract class Application extends Gobject {
+
+    /**
+     * string version
+     *
+     * @var string
+     */
+    const VERSION = '1.0.0-dev';
 
     /**
      * Magical array for defining gsignals for the object
@@ -39,24 +45,19 @@ abstract class Application extends Gobject {
      * @var array
      */
     public $__gsignals = array(
-        'startup'           => array(GObject::SIGNAL_RUN_FIRST, GObject::TYPE_NONE, array()),
-        'shutdown'          => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
-        'load-config'       => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array(Gobject::TYPE_PHP_VALUE)),
-        'save-config'       => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array(Gobject::TYPE_PHP_VALUE)),
-        'init'              => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
-        'uninit'            => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
-        'run'               => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
-        'quit'              => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
-        'load-plugin'       => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
-        'unload-plugin'     => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
+        'startup'       => array(GObject::SIGNAL_RUN_FIRST, GObject::TYPE_NONE, array(Gobject::TYPE_PHP_VALUE)),
+        'load-config'   => array(GObject::SIGNAL_RUN_FIRST, GObject::TYPE_NONE, array(Gobject::TYPE_PHP_VALUE)),
+        'load-plugin'   => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
+        'update'        => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
+        'init'          => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array(Gobject::TYPE_PHP_VALUE)),
+        'run'           => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array(Gobject::TYPE_PHP_VALUE)),
+        'quit'          => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
+        'error'         => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
+        'uninit'        => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
+        'unload-plugin' => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
+        'save-config'   => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array(Gobject::TYPE_PHP_VALUE)),
+        'shutdown'      => array(GObject::SIGNAL_RUN_LAST, GObject::TYPE_NONE, array()),
     );
-
-    /**
-     * Application is a singleton class, this is where the instance is stored
-     *
-     * @var object instanceof Application
-     */
-    static private $instance;
 
     /**
      * A name for the application - if no name is given will default to Callicore
@@ -66,32 +67,32 @@ abstract class Application extends Gobject {
     protected $name = 'Callicore';
 
     /**
-     * Loaded plugin objects
+     * Loaded plugin objects - readonly
      *
-     * @var object instanceof \Callicore\Lib\Registry
+     * @var object instanceof SplObjectStore with instanceof \Callicore\Lib\Plugin
      */
     private $plugins;
 
     /**
-     * Configuration storage object
+     * Configuration storage object - readonly
      *
      * @var object instanceof \Callicore\Lib\Config
      */
     private $config;
 
     /**
-     * Translation storage object
+     * Translation storage object - readonly
      *
      * @var object instanceof \Callicore\Lib\Translate
      */
     private $translate;
 
     /**
-     * Main window for program
+     * Error class - readonly
      *
-     * @var object instanceof \Callicore\Lib\Window\Main
+     * @var object instanceof \Callicore\Lib\Error
      */
-    private $window;
+    private $error;
 
     /**
      * Sets up the application so it's ready to run
@@ -99,83 +100,41 @@ abstract class Application extends Gobject {
      * @return void
      */
     final public function __construct() {
-        // set our default "write to stderr" handler
-        set_error_handler(array($this, 'error'));
-        set_exception_handler(array($this, 'exception'));
 
-        if (self::$instance) {
-            throw new \Exception('Application ' . self::$instance->name . ' already created, use Application::getInstance()', E_USER_WARNING);
-            return;
-        }
+        $this->check_requirements();
 
-        // this must be called to set up the gobject stuff properly
+        // we can do nothing without registering our gtk type
+        GObject::register_type(get_called_class());
         parent::__construct();
-        self::$instance = $this;
 
-        // perform startup activities
-        if (version_compare(PHP_VERSION, '5.3.0-dev', '<')) {
-            trigger_error("You must use php 5.3.0 or higher\n", E_USER_ERROR);
-        }
-
-        // required extensions
-        $have = get_loaded_extensions();
-        $needed = array('standard', 'pcre', 'date', 'Reflection', 'tokenizer',
-                        'SPL', 'php-gtk', 'gettext', 'iconv', 'cairo');
-        if (stristr(PHP_OS, 'win32')) {
-            $needed[] = 'com';
-        }
-        $diff = array_diff($needed, $have);
-        // attempt to dl ones that aren't already loaded
-        foreach($diff as $key => $ext) {
-            if (Util::ext($ext) == true) {
-                unset($diff[$key]);
-            }
-        }
-        // blow up if the extensions are STILL not loaded
-        if (!empty($diff)) {
-            trigger_error('The following extensions must be present - either built into php or loaded via your php.ini - for Callicore to function: ' . implode(', ', $diff), E_USER_ERROR);
-        }
-
-        // GTK 2.12 is needed for
-        if ($error = Gtk::check_version(2, 12, 0)) {
-            trigger_error('Callicore requires GTK+ 2.12 or higher, ' . $error, E_USER_ERROR);
-        }
-
-        error_reporting(E_ALL | E_STRICT);
-        ini_set('display_errors', false);
-        ini_set('log_errors', true);
-
-        // emit the startup signal
-        $this->emit('startup');
+        // setup is complete, startup
+        $this->emit('startup', $this);
 
         // actually load in configuration at $appdata/$appname.ini
-        $this->config = new Config(Util::getFolder('appdata'), $this->name);
+        $this->config = $config = new Config(Util::getFolder('appdata', $this->name), $this->name);
+        $this->emit('load-config', $config);
 
-        // emit configuration loaded signal
-        $this->emit('load-config', $this->config);
-
-        // grab the plugins list
-        // foreach plugin, do a load (call a separate load-plugin method)
+        // TODO: autoupdating & updating
+        // TODO: plugin loading
     }
 
-    /**
+        /**
      * Actually runs the program
      *
      * @return void
      */
     final public function run() {
+
         // load up the translation stuff
-        $this->translate = new Translate();
-        // register GTK window error handlers
-        set_error_handler(array(__NAMESPACE__ . '\Message', 'error'));
-        set_exception_handler(array(__NAMESPACE__ . '\Message', 'exception'));
-        $this->emit('init');
+        $this->translate = new Translate($this);
+
+        $this->emit('init', $this);
 
         // call the abstract main method
         $this->main();
 
         // start up gtk main loop
-        $this->emit('run');
+        $this->emit('run', $this);
         Gtk::main();
 
     }
@@ -200,7 +159,7 @@ abstract class Application extends Gobject {
     abstract function main();
 
     /**
-     * name, config, and translate are "read-only"
+     * "read-only" properties
      *
      * @param string $offset item to be retrieved
      * @return mixed
@@ -218,39 +177,57 @@ abstract class Application extends Gobject {
     }
 
     /**
-     * Error handler to write issues to stderr
-     * Used before initialization of the program, when configuration settings
-     * for logging/etc are not available
+     * Simple helper method that sets up very basic 
      *
-     * @return string
+     * @return void
      */
-    public function error($errno, $errstr , $errfile, $errline) {
-        fwrite(STDERR, wordwrap(
-            'Error #' . $errno . ': ' . $errstr . ' on ' . $errfile . ':' . $errline . PHP_EOL . PHP_EOL,
-            75, PHP_EOL, true));
-    }
+    protected function check_requirements() {
 
-    /**
-     * Default exception handler - changes an exception to an error, used before
-     * initialization when configuration settings are not available
-     *
-     * @return string
-     */
-    public function exception($e) {
-        $this->handler($e->getCode(), $e->getMessage(), $e->getLine(), $e->getFile());
-    }
+        // turn erroring way up
+        error_reporting(-1);
 
-    /**
-     * Returns the application object
-     *
-     * @return object instaceof Application
-     */
-    static public function getInstance() {
-        if (!self::$instance) {
-            trigger_error('Application not already created, create the object before attempting to fetch it.', E_USER_ERROR);
-            return;
+        $this->error = $error = new Error;
+        $error->set_stderr_handlers();
+
+        // absolute bare minimum requirements
+        if (version_compare(PHP_VERSION, '5.4.0', '<')) {
+            trigger_error('You must use php 5.4.0 or higher' . PHP_EOL, E_USER_ERROR);
         }
-        return self::$instance;
+
+        // cli sapi required
+        if (PHP_SAPI !== 'cli') {
+            trigger_error('Callicore applications require using the CLI SAPI' . PHP_EOL, E_USER_ERROR);
+        }
+
+        // required extensions
+        $have = get_loaded_extensions();
+        $needed = array('standard', 'pcre', 'date', 'Reflection', 'tokenizer',
+                        'SPL', 'php-gtk', 'gettext', 'iconv', 'cairo');
+        if (stristr(PHP_OS, 'win32')) {
+            $needed[] = 'com';
+        }
+        $diff = array_diff($needed, $have);
+        // attempt to dl ones that aren't already loaded
+        foreach($diff as $key => $ext) {
+            if (Util::dl($ext, $this->name) == true) {
+                unset($diff[$key]);
+            }
+        }
+        if (!empty($diff)) {
+            trigger_error('The following extensions must be present - either built into php or loaded via your php-cli.ini - for Callicore to function: '
+                          . implode(', ', $diff) . PHP_EOL, E_USER_ERROR);
+        }
+
+        if ($message = Gtk::check_version(2, 24, 0)) {
+            trigger_error('Callicore requires GTK+ 2.24 or higher, ' . $message . PHP_EOL, E_USER_ERROR);
+        }
+
+        if ($error->has_error()) {
+            die(256);
+        }
+
+        $error->restore_handlers();
+
     }
 
     /**
@@ -260,27 +237,20 @@ abstract class Application extends Gobject {
      * @return void
      */
     final public function __destruct() {
-        // set our default "write to stderr" handlers
-        set_error_handler(array($this, 'error'));
-        set_exception_handler(array($this, 'exception'));
 
-        // unload any plugins
-        //foreach ($this->plugins as $plugin) {
-            // call a seperate unload plugin method, so you can load/unload during run
-            //$this->emit('unload-plugin', $plugin);
-        //}
+       // TODO: unload plugins
 
         // save configuration settings
         $this->emit('save-config', $this->config);
 
-        unset($this->config);
+        unset($this->config, $this->translate);
 
         // emit the shutdown signal
         $this->emit('shutdown');
-    }
-}
 
-/**
- * Calls underlying C code
- */
-GObject::register_type(__NAMESPACE__ . '\Application');
+        // restore error handling and close it up
+        $this->error->restore_handlers();
+        unset($this->error);
+    }
+
+}

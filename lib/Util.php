@@ -4,14 +4,13 @@
  *
  * This is released under the MIT, see license.txt for details
  *
- * @author       Elizabeth Smith <auroraeosrose@php.net>
- * @copyright    Elizabeth Smith (c)2009
+ * @author       Elizabeth M Smith <auroraeosrose@gmail.com>
+ * @copyright    Elizabeth M Smith (c) 2009-2012
  * @link         http://callicore.net
  * @license      http://www.opensource.org/licenses/mit-license.php MIT
- * @version      $Id: Util.php 25 2009-04-30 23:58:52Z auroraeosrose $
- * @since        Php 5.3.0
+ * @since        Php 5.4.0 GTK 2.24.0
  * @package      callicore
- * @subpackage   lib
+ * @subpackage   library
  * @filesource
  */
 
@@ -21,28 +20,29 @@
 namespace Callicore\Lib;
 
 /**
- * Util - mic helper functions and information
+ * Util - misc helper functions and information
  * This is an entirely static class
  */
-class Util {
+final class Util {
 
     /**
      * Cached retreived OS folder locations
      * @var array
      */
-    static private $folders = array('home' => null,
-                             'temp' => null,
-                             'appdata' => null,
-                             'documents' => null,
-                             'config' => null);
+    static private $folders = array(
+                                    'home' => null,
+                                    'temp' => null,
+                                    'appdata' => null,
+                                    'documents' => null,
+                                    'config' => null);
 
     /**
-     * Returns special folder strings
+     * Returns special folder absolute paths
      *
      * @param string $folder name of item to retrieve
      * @return string
      */
-    static public function getFolder($folder) {
+    static public function getFolder($folder, $appname = 'Callicore') {
         // all lookups are case insensitive
         $folder = strtolower($folder);
 
@@ -66,7 +66,7 @@ class Util {
         } elseif ($folder === 'config' || $folder === 'appdata') {
             if (!self::$folders['config']) {
                 // grab and cache the home directory
-                self::$folders['config'] = self::get_app_dir();
+                self::$folders['config'] = self::get_app_dir($appname);
             }
             return self::$folders['config'];
 
@@ -74,7 +74,7 @@ class Util {
         } elseif ($folder === 'documents') {
             if (!self::$folders['documents']) {
                 // grab and cache the documents directory
-                self::$folders['documents'] = self::get_documents_dir();
+                self::$folders['documents'] = self::get_documents_dir($appname);
             }
             return self::$folders['documents'];
 
@@ -109,16 +109,15 @@ class Util {
      * 
      * @return string
      */
-    static protected function get_app_dir()
+    static protected function get_app_dir($appname)
     {
-        $app = Application::getInstance();
         $home = self::getFolder('home');
         if (stristr(PHP_OS, 'win')) {
-            return $home . 'Callicore' . DIRECTORY_SEPARATOR . $app->name . DIRECTORY_SEPARATOR;
+            return $home . 'Callicore' . DIRECTORY_SEPARATOR . $appname . DIRECTORY_SEPARATOR;
         } elseif (stristr(PHP_OS, 'darwin') || stristr(PHP_OS, 'mac')) {
-            return $home . 'Library/Application Support/Callicore/' . $app->name . DIRECTORY_SEPARATOR;
+            return $home . 'Library/Application Support/Callicore/' . $appname . DIRECTORY_SEPARATOR;
         } else {
-            return $home . '.callicore/.' . strtolower($app->name) . DIRECTORY_SEPARATOR;
+            return $home . '.callicore/.' . strtolower($appname) . DIRECTORY_SEPARATOR;
         }
     }
 
@@ -128,7 +127,7 @@ class Util {
      *
      * @return string
      */
-    static protected function get_documents_dir()
+    static protected function get_documents_dir($appname)
     {
         // we always use wscript and com on windows because we want "my documents"
         if (stristr(PHP_OS, 'win')) {
@@ -137,7 +136,7 @@ class Util {
             unset ($shell);
             return $documents;
         } else {
-            $home = self::getFolder('appdata');
+            $home = self::getFolder('appdata', $appname);
             if (file_exists($home . 'Documents')) {
                 return $home . 'Documents' . DIRECTORY_SEPARATOR;
             } else {
@@ -175,7 +174,7 @@ class Util {
             }
         }
         if (stristr(PHP_OS, 'win')) {
-            $shell = new \COM('WScript.Shell'); // note the absolute path, we can't use this
+            $shell = new \COM('WScript.Shell'); // note the absolute path, we can't use because doesn't exist on non-win
             $data = $shell->Run($cmd);
             unset($shell);
             return $data;
@@ -190,7 +189,7 @@ class Util {
      * @param string $ext extension to load
      * @return bool
      */
-    static public function ext($ext) {
+    static public function dl($ext) {
         // is the extension loaded?
         if(extension_loaded($ext)) {
             return true;
@@ -221,4 +220,9 @@ class Util {
         self::launch($link);
         return true; // will stop any bubbling
     }
+
+    /**
+     * Makes sure this is never instantiated
+     */
+    private function __construct() {}
 }

@@ -1,24 +1,24 @@
 <?php
 /**
- * Window.php - \Callicore\Lib\Window
+ * Window.php - \Callicore\Lib\Widget\Window
  *
  * This is released under the MIT, see license.txt for details
  *
- * @author       Elizabeth Smith <auroraeosrose@php.net>
- * @copyright    Elizabeth Smith (c)2009
+ * @author       Elizabeth M Smith <auroraeosrose@gmail.com>
+ * @copyright    Elizabeth M Smith (c) 2009-2012
  * @link         http://callicore.net
  * @license      http://www.opensource.org/licenses/mit-license.php MIT
- * @version      $Id: Api.php 17 2009-04-25 21:30:35Z auroraeosrose $
- * @since        Php 5.3.0
+ * @since        Php 5.4.0 GTK 2.24.0
  * @package      callicore
- * @subpackage   twitter
+ * @subpackage   library
  * @filesource
  */
 
 /**
  * Namespace for all the baseline library functionality
  */
-namespace Callicore\Lib;
+namespace Callicore\Lib\Widget;
+use Callicore\Lib\Application; // app data
 use GtkWindow; // extend main window
 use Gdk; // for some constants
 
@@ -30,6 +30,13 @@ use Gdk; // for some constants
  * This is usually only useful for top-level windows of applications
  */
 abstract class Window extends GtkWindow {
+
+    /**
+     * Configuration storage object - readonly
+     *
+     * @var object instanceof \Callicore\Lib\Config
+     */
+    protected $config;
 
     /**
      * windows can be minimized, maximized and fullscreened
@@ -73,7 +80,7 @@ abstract class Window extends GtkWindow {
      *
      * @return void
      */
-    public function __construct()
+    public function __construct(Application $app)
     {
 
         parent::__construct();
@@ -82,7 +89,7 @@ abstract class Window extends GtkWindow {
             $this->set_name(get_called_class());
         }
 
-        $config = Application::getInstance()->config;
+        $this->config = $config = $app->config;
         if (!isset($config[$this->name])) {
             $config[$this->name] = array();
         }
@@ -121,7 +128,7 @@ abstract class Window extends GtkWindow {
      */
     public function on_state_save()
     {
-        $config = Application::getInstance()->config;
+        $config = $this->config;
 
         // unmax/min/fullscreen
         $config[$this->name]['fullscreen'] = (bool) $this->fullscreen;
@@ -187,4 +194,3 @@ abstract class Window extends GtkWindow {
         $this->fullscreen = ($event->new_window_state & Gdk::WINDOW_STATE_FULLSCREEN) ? true : false;
     }
 }
-?>
