@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Komodo Project File - DO NOT EDIT -->
+<project id="7262f047-826e-4ddd-86df-0298de654a1a" kpf_version="4" name="Lib.kpf">
+<folder id="7c390f57-185f-4281-80b0-a834ba6715f6" idref="7262f047-826e-4ddd-86df-0298de654a1a" name="Utility Widgets">
+</folder>
+<folder id="a8dea60b-6a90-48bd-a749-ec6cf599478c" idref="7262f047-826e-4ddd-86df-0298de654a1a" name="Abstract Widgets">
+</folder>
+<file id="11965b72-98c1-499d-90eb-a640df7b2a9c" idref="7c390f57-185f-4281-80b0-a834ba6715f6" name="message.php" url="message.php">
+</file>
+<file id="c8b6c8bc-cfd7-4366-b20b-22a80dd8b71f" idref="a8dea60b-6a90-48bd-a749-ec6cf599478c" name="window.php" url="window.php">
+</file>
+<file id="f55046df-f00a-4efa-833f-ff2b34d9d448" idref="a8dea60b-6a90-48bd-a749-ec6cf599478c" name="program.php" url="program.php">
+</file>
+<preference-set idref="7262f047-826e-4ddd-86df-0298de654a1a">
+  <string id="donotask_action_remotedebug_mapped_uri"></string>
+  <boolean id="donotask_remotedebug_mapped_uri">0</boolean>
+  <string id="import_exclude_matches">*.*~;*.bak;*.tmp;CVS;.#*;*.pyo;*.pyc;.svn;_svn;*%*;tmp*.html;.DS_Store</string>
+  <string id="import_include_matches"></string>
+  <boolean id="import_live">0</boolean>
+  <boolean id="import_recursive">1</boolean>
+  <string id="import_type">useFolders</string>
+  <string id="lastTestPlanName_pref">New test plan #1</string>
+  <string id="mappedPaths"></string>
+<preference-set id="testPlans">
+<preference-set id="New test plan #1">
+  <string id="command_line"></string>
+  <string relative="url" id="directory"></string>
+  <string id="language">Perl - TAP (*.t)</string>
+</preference-set>
+</preference-set>
+</preference-set>
+</project>

@@ -5,9 +5,10 @@
  * This is released under the MIT, see license.txt for details
  *
  * @author       Elizabeth Smith <auroraeosrose@php.net>
- * @copyright    Elizabeth Smith (c)2009-2012
+ * @copyright    Elizabeth Smith (c)2009
  * @link         http://callicore.net
  * @license      http://www.opensource.org/licenses/mit-license.php MIT
+ * @version      $Id: Application.php 23 2009-04-26 02:24:03Z auroraeosrose $
  * @since        Php 5.3.0
  * @package      callicore
  * @subpackage   lib
