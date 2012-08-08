@@ -49,7 +49,7 @@ class Config extends ArrayObject {
     public function __construct($appdata_path, $app_name) {
         // if the appdata dir doesn't exist, create it
         if (!file_exists($appdata_path)) {
-            mkdir($appdata_path, 077, true);
+            mkdir($appdata_path, 0755, true);
         }
 
         $this->filename = $appdata_path . $app_name . '.ini';

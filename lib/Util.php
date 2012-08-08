@@ -112,10 +112,11 @@ final class Util {
     static protected function get_app_dir($appname)
     {
         $home = self::getFolder('home');
-        if (stristr(PHP_OS, 'win')) {
-            return $home . 'Callicore' . DIRECTORY_SEPARATOR . $appname . DIRECTORY_SEPARATOR;
-        } elseif (stristr(PHP_OS, 'darwin') || stristr(PHP_OS, 'mac')) {
+
+        if (stristr(PHP_OS, 'darwin') || stristr(PHP_OS, 'mac')) {
             return $home . 'Library/Application Support/Callicore/' . $appname . DIRECTORY_SEPARATOR;
+        } elseif (stristr(PHP_OS, 'win')) {
+            return $home . 'Callicore' . DIRECTORY_SEPARATOR . $appname . DIRECTORY_SEPARATOR;
         } else {
             return $home . '.callicore/.' . strtolower($appname) . DIRECTORY_SEPARATOR;
         }
