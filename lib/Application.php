@@ -113,7 +113,7 @@ abstract class Application extends Gobject {
 
         // actually load in configuration at $appdata/$appname.ini
         self::$config = $config = new Config(Util::getFolder('appdata', $this->name), $this->name);
-        $this->emit('load-config', self::$config);
+        $this->emit('load-config', $config);
 
         // TODO: autoupdating & updating
         // TODO: plugin loading

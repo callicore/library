@@ -152,7 +152,7 @@ class Splash extends GtkWindow
     {
         // License info just above progressbar
         $hbox = new GtkHBox();
-        $hbox->pack_start(new GtkLabel($this->translate->_($license)), false, false);
+        $hbox->pack_start(new GtkLabel(App::_($license)), false, false);
         $this->vbox->pack_end($hbox, false, false);
     }
 
@@ -198,7 +198,7 @@ class Splash extends GtkWindow
      */
     public function update($text)
     {
-        $this->progressbar->set_text($this->translate->_($text));
+        $this->progressbar->set_text(App::_($text));
         $this->progressbar->set_fraction($this->progressbar->get_fraction() +
                 (1 / $this->steps));
         while (Gtk::events_pending()) {
