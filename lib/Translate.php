@@ -52,19 +52,13 @@ class Translate {
     protected $locale_dir;
 
     /**
-     * Configuration storage object - readonly
-     *
-     * @var object instanceof \Callicore\Lib\Config
-     */
-    protected $config;
-
-    /**
      * Sets up the program so it's ready to run
      *
      * @param string $program name of the program
      * @return void
      */
-    public function __construct(Application $app) {
+    public function __construct() {
+
         // get defaults
         $this->charset = ini_get('php-gtk.codepage');
         $this->locale = setlocale(LC_ALL, null); // gets current setting
@@ -72,7 +66,7 @@ class Translate {
         $this->locale_dir = null;
 
         // override from configure
-        $this->config = $config = $app->config;
+        $config = Application::config();
         if (isset($config['locale']) && $config['locale'] !== $this->locale) {
             $this->locale = $config['locale'];
         }
@@ -130,7 +124,7 @@ class Translate {
             return false;
         }
         $this->locale = $locale;
-        $this->config->locale = $this->locale;
+        Application::config()->locale = $this->locale;
         return true;
     }
 
@@ -143,7 +137,7 @@ class Translate {
     public function set_locale_dir($locale_dir) {
         $this->locale_dir = $locale_dir;
         bindtextdomain($this->domain, $this->locale_dir);
-        $this->config->locale_dir = $this->locale_dir;
+        Application::config()->locale_dir = $this->locale_dir;
         return true;
     }
 
@@ -158,7 +152,7 @@ class Translate {
         $this->charset = $charset;
         ini_set('php-gtk.codepage', $this->charset);
         bind_textdomain_codeset($this->domain, $this->charset);
-        $this->config->charset = $this->charset;
+        Application::config()->charset = $this->charset;
         return true;
     }
 
@@ -171,7 +165,7 @@ class Translate {
     public function set_domain($domain) {
         $this->domain = $domain;
         textdomain($this->domain);
-        $this->config->domain = $this->domain;
+        Application::config()->domain = $this->domain;
         return true;
     }
 
@@ -181,7 +175,7 @@ class Translate {
      * @param string $string string to translate
      * @return string translated string
      */
-    public function _($string) {
+    public function _($string /* ... */) {
         $args = func_get_args();
         array_shift($args);
         if (!empty($args) && count($args) == 1 && is_array($args[0])) {
@@ -198,7 +192,7 @@ class Translate {
      * @param int $number number of items
      * @return string translated string
      */
-    public function __($string, $plural_string, $number) {
+    public function __($string, $plural_string, $number /* ... */) {
         $args = func_get_args();
         unset($args[0], $args[1]);
         if (isset($args[3]) && count($args) == 2 && is_array($args[3])) {

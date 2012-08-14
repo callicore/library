@@ -78,14 +78,14 @@ abstract class Application extends Gobject {
      *
      * @var object instanceof \Callicore\Lib\Config
      */
-    private $config;
+    private static $config;
 
     /**
      * Translation storage object - readonly
      *
      * @var object instanceof \Callicore\Lib\Translate
      */
-    private $translate;
+    private static $translate;
 
     /**
      * Error class - readonly
@@ -106,13 +106,14 @@ abstract class Application extends Gobject {
         // we can do nothing without registering our gtk type
         GObject::register_type(get_called_class());
         parent::__construct();
+        $this->connect('load-config', array($this, 'load_config'));
 
         // setup is complete, startup
         $this->emit('startup', $this);
 
         // actually load in configuration at $appdata/$appname.ini
-        $this->config = $config = new Config(Util::getFolder('appdata', $this->name), $this->name);
-        $this->emit('load-config', $config);
+        self::$config = $config = new Config(Util::getFolder('appdata', $this->name), $this->name);
+        $this->emit('load-config', self::$config);
 
         // TODO: autoupdating & updating
         // TODO: plugin loading
@@ -126,7 +127,7 @@ abstract class Application extends Gobject {
     final public function run() {
 
         // load up the translation stuff
-        $this->translate = new Translate($this);
+        self::$translate = new Translate();
 
         $this->emit('init', $this);
 
@@ -159,21 +160,52 @@ abstract class Application extends Gobject {
     abstract function main();
 
     /**
-     * "read-only" properties
+     * get the app name
      *
-     * @param string $offset item to be retrieved
-     * @return mixed
+     * @return string
      */
-    public function __get($offset) {
-        if ($offset == 'name') {
-            return $this->name;
-        } elseif ($offset == 'config') {
-            return $this->config;
-        } elseif ($offset == 'translate') {
-            return $this->translate;
-        } else {
-            return null;
-        }
+    public function name() {
+       return $this->name;
+    }
+
+    /**
+     * get config instance
+     *
+     * @return instanceof \Callicore\Lib\Config
+     */
+    public static function config() {
+       return self::$config;
+    }
+
+    /**
+     * get translate instance
+     *
+     * @return instanceof \Callicore\Lib\Translate
+     */
+    public static function translate() {
+       return self::$translate;
+    }
+
+    /**
+     * shortcut for _ in translate instance
+     *
+     * @varargs
+     * @return string
+     */
+    public static function _(/* ... */) {
+        $args = func_get_args();
+        return call_user_func_array(array(self::$translate, '_'), $args);
+    }
+
+    /**
+     * shortcut for __ in translate instance
+     *
+     * @varargs
+     * @return string
+     */
+    public static function __(/* ... */) {
+        $args = func_get_args();
+        return call_user_func_array(array(self::$translate, '__'), $args);
     }
 
     /**
@@ -243,7 +275,7 @@ abstract class Application extends Gobject {
         // save configuration settings
         $this->emit('save-config', $this->config);
 
-        unset($this->config, $this->translate);
+        unset(self::$config, self::$translate);
 
         // emit the shutdown signal
         $this->emit('shutdown');

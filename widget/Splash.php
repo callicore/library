@@ -18,7 +18,7 @@
  * Namespace for all the baseline library functionality
  */
 namespace Callicore\Lib\Widget;
-use Callicore\Lib\Application; // translate and config information
+use Callicore\Lib\Application as App; // translate and config information
 use GtkWindow; // extend main window
 use Gtk; // some constants
 use Gdk; // some constants
@@ -28,6 +28,7 @@ use GtkHBox; // packing
 use GdkPixbuf; // pretty png window
 use GdkPixmap; // pretty png window
 use GtkLabel; // for our text
+use GtkAlignment; // aligning our main vbox
 
 /**
  * Splash - basically a wrapper around GtkWindow
@@ -63,12 +64,6 @@ class Splash extends GtkWindow
     protected $hbox;
 
     /**
-     * translation class
-     * @var $translate instanceof Callicore\Lib\Translate
-     */
-    protected $translate;
-
-    /**
      * public function __construct
      *
      * creates and displays the splash window
@@ -80,12 +75,11 @@ class Splash extends GtkWindow
     {
 
         $this->steps = (int) $steps;
-        $this->translate = $translate = $app->translate;
 
         // Window Features
         parent::__construct();
         $this->set_position(Gtk::WIN_POS_CENTER);
-        $this->set_title($translate->_('%s :: %s', $app->name, 'Loading'));
+        $this->set_title(App::_('%s :: %s', $app->name(), 'Loading'));
         $this->set_resizable(false);
         $this->set_decorated(false);
         $this->set_skip_taskbar_hint(true);
@@ -103,9 +97,9 @@ class Splash extends GtkWindow
 
         // Progressbar on Bottom
         $this->progressbar = new GtkProgressBar();
-        $this->progressbar->set_text($translate->_('Loading...'));
+        $this->progressbar->set_text(App::_('Loading...'));
         $this->progressbar->set_fraction(0);
-        $vbox->pack_end($this->progressbar, false, false);
+        $vbox->pack_end($this->progressbar, 0, false);
     }
 
     /**
@@ -175,7 +169,7 @@ class Splash extends GtkWindow
         if (is_null($version)) {
             $version = Callicore\Lib\Application::VERSION;
         }
-        $this->hbox->pack_end(new GtkLabel($this->translate->_($version)), false, false);
+        $this->hbox->pack_end(new GtkLabel(App::_($version)), false, false);
     }
 
     /**
@@ -191,7 +185,7 @@ class Splash extends GtkWindow
         if (is_null($copyright)) {
             $copyright = 'Copyright (c) ' . date('Y');
         }
-        $this->hbox->pack_start(new GtkLabel($this->translate->_($copyright)), false, false);
+        $this->hbox->pack_start(new GtkLabel(App::_($copyright)), false, false);
     }
 
     /**
@@ -210,5 +204,23 @@ class Splash extends GtkWindow
         while (Gtk::events_pending()) {
             Gtk::main_iteration();
         }
+    }
+
+    /**
+     * public function align
+     *
+     * Put the vbox into a gtkalignment container to add padding
+     * Useful for images with larger shape masks
+     *
+     * @param string $text text to fill
+     * @return type about
+     */
+    public function align($top, $bottom, $left, $right)
+    {
+        $this->remove($this->vbox);
+        $align = new GtkAlignment(0.5, 0.5, 1, 1);
+        $align->set_padding($top, $bottom, $left, $right);
+        $this->add($align);
+        $align->add($this->vbox);
     }
 }
