@@ -273,9 +273,10 @@ abstract class Application extends Gobject {
        // TODO: unload plugins
 
         // save configuration settings
-        $this->emit('save-config', $this->config);
+        $this->emit('save-config', self::$config);
 
-        unset(self::$config, self::$translate);
+        self::$config = null;
+        self::$translate = null;
 
         // emit the shutdown signal
         $this->emit('shutdown');

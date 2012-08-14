@@ -78,6 +78,22 @@ class Config extends ArrayObject {
         $array = $this->getArrayCopy();
 
         foreach ($array as $section => $data) {
+            if (!is_array($data)) {
+                if (is_bool($data)) {
+                    $string .= preg_replace('/[' . preg_quote('{}|&~![()"') . ']/', '', $section)
+                        . ' = ' . (($data == true) ? 'TRUE' : 'FALSE') . PHP_EOL;
+                } elseif (is_scalar($data)) {
+                    $string .= preg_replace('/[' . preg_quote('{}|&~![()"') . ']/', '', $section)
+                        . ' = "' . str_replace('"', '', $data) . '"' . PHP_EOL;
+                }
+            }
+        }
+
+        foreach ($array as $section => $data) {
+            if (!is_array($data)) {
+                continue;
+            }
+
             $string .= '[' . preg_replace('/[' . preg_quote('{}|&~![()"') . ']/', '', $section) . ']' . PHP_EOL;
             foreach ($data as $key => $value) {
                 if (is_bool($value)) {
@@ -97,6 +113,7 @@ class Config extends ArrayObject {
                 }
             }
         }
+
         file_put_contents($this->filename, $string);
     }
 }
