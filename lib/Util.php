@@ -118,7 +118,7 @@ final class Util {
         } elseif (stristr(PHP_OS, 'win')) {
             return $home . 'Callicore' . DIRECTORY_SEPARATOR . $appname . DIRECTORY_SEPARATOR;
         } else {
-            return $home . '.callicore/.' . strtolower($appname) . DIRECTORY_SEPARATOR;
+            return $home . '.callicore/' . strtolower($appname) . DIRECTORY_SEPARATOR;
         }
     }
 

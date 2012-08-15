@@ -18,7 +18,7 @@
  * Namespace for all the baseline library functionality
  */
 namespace Callicore\Lib\Widget;
-use Callicore\Lib\Application; // app data
+use Callicore\Lib\Application as App; // app data
 use GtkWindow; // extend main window
 use Gdk; // for some constants
 
@@ -30,13 +30,6 @@ use Gdk; // for some constants
  * This is usually only useful for top-level windows of applications
  */
 abstract class Window extends GtkWindow {
-
-    /**
-     * Configuration storage object - readonly
-     *
-     * @var object instanceof \Callicore\Lib\Config
-     */
-    protected $config;
 
     /**
      * windows can be minimized, maximized and fullscreened
@@ -80,7 +73,7 @@ abstract class Window extends GtkWindow {
      *
      * @return void
      */
-    public function __construct(Application $app)
+    public function __construct()
     {
 
         parent::__construct();
@@ -89,7 +82,7 @@ abstract class Window extends GtkWindow {
             $this->set_name(get_called_class());
         }
 
-        $this->config = $config = $app->config;
+        $config = App::config();
         if (!isset($config[$this->name])) {
             $config[$this->name] = array();
         }
@@ -128,7 +121,7 @@ abstract class Window extends GtkWindow {
      */
     public function on_state_save()
     {
-        $config = $this->config;
+        $config = App::config();
 
         // unmax/min/fullscreen
         $config[$this->name]['fullscreen'] = (bool) $this->fullscreen;
@@ -194,3 +187,4 @@ abstract class Window extends GtkWindow {
         $this->fullscreen = ($event->new_window_state & Gdk::WINDOW_STATE_FULLSCREEN) ? true : false;
     }
 }
+GObject::register_type('Callicore\Lib\Widget\Window');
