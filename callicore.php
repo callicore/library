@@ -32,4 +32,6 @@ include CALLICORE_LIB . 'lib' . DIRECTORY_SEPARATOR . 'Application.php';
  * Include all widget items
  */
 include CALLICORE_LIB . 'widget' . DIRECTORY_SEPARATOR . 'Window.php';
+include CALLICORE_LIB . 'widget' . DIRECTORY_SEPARATOR . 'Main.php';
+include CALLICORE_LIB . 'widget' . DIRECTORY_SEPARATOR . 'Builder.php';
 include CALLICORE_LIB . 'widget' . DIRECTORY_SEPARATOR . 'Splash.php';

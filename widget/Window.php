@@ -21,6 +21,7 @@ namespace Callicore\Lib\Widget;
 use Callicore\Lib\Application as App; // app data
 use GtkWindow; // extend main window
 use Gdk; // for some constants
+use Gobject; // for registering our type
 
 /**
  * Window extends GtkWindow to make window state "rememberable" from instance
@@ -77,6 +78,7 @@ abstract class Window extends GtkWindow {
     {
 
         parent::__construct();
+        echo "generating main";
 
         if (empty($this->name)) {
             $this->set_name(get_called_class());
@@ -149,7 +151,6 @@ abstract class Window extends GtkWindow {
         $config[$this->name]['y'] = (int) $y;
 
         $this->destroy();
-        return;
     }
 
     /**
